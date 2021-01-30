@@ -1,0 +1,210 @@
+#NAME:CLARIZA LOOK
+#ID: 22860721
+#Created using: Windows 10 Home WSL 
+#Task: updates the comment found in each C source code file 
+#so that it (now) contains the next version number, and the current 
+#date/time as the next release date. 
+#Sample input: ./updateversion [project name]
+#Sample output: "YOUR FILES ARE NOW UPDATED ...."
+#########REFER "READ ME FIRST" FILE#############################################
+# Steps to execute the files
+#0. There is an existing "Makefile" file in the current "final_tsk1" folder. 
+#1. Extract calcmarks.zip manually, except for "Makefile" file
+#2. After extracting without the "MakeFile" file from the calcmarks.zip, Now call the "Makefile" by typing "make" or "Makefile" in the shell to generate the executable file called "calcmarks" which is the project name
+#3. Then run "Makefile update_vn" in the shell. It will update the versions of all C files and the Makefile itself
+#########################################################################
+
+
+#####Set timezone to Australia Perth Time
+export TZ=Australia/Perth
+new_release_date=`date`
+
+#####Storing input "project name" in sample input
+proj_name=$1 
+
+
+#####Function that checks if project name is in the folder directory
+check_file_in_folder() {
+	if [[ -f "$proj_name" ]]
+		then
+		echo "....UPDATING YOUR C FILES' PROJECT VERSION...."
+		
+		#####If project name is found, proceed to read all files written in C 
+		read_version_c 
+		
+	else 
+		echo "THIS PROJECT NAME IS NOT FOUND!!"
+		echo "PLEASE CHOOSE A DIFFERENT PROJECT NAME."
+		
+	fi
+}
+
+#####Function that updates the Makefile
+update_makefile_version() {
+	echo "                                     "
+	echo "....NOW UPDATING MAKEFILE VERSION..."
+	
+	input_mf=Makefile
+
+
+	#####Read each line of the $input file
+	while IFS= read -r makefile_lines
+	do
+		#echo $makefile_lines
+		
+		#####Checks and look for a line in $makefile_lines that has "//"
+	
+		if [[ "$makefile_lines" == *"calcmarks, version"* ]]; then               
+			#echo "LINES has "calcmarks, version:" " $makefile_lines
+			
+			
+			to_be_removed_mkfileline=$makefile_lines
+			#echo "REMOVE THIS LINE: " $to_be_removed_mkfileline
+			
+			
+			new_mf_comment=""#" $project_name $new_version_num"," "released" $new_release_date"
+			#echo "INSERT THIS LINE: " $new_mf_comment
+			
+			#####Replace the old with new Makefile version line  
+			sed -i "s|$to_be_removed_mkfileline|$new_mf_comment|g" $input_mf
+				
+			break
+				
+		
+		fi  
+	done < "$input_mf"
+	echo "....MAKEFILE VERSION IS NOW UPDATED..."
+}
+
+
+#####Function that reads what version of C files
+read_version_c () {
+	
+	#####Gets all lines that has "version" in the C files in the directory
+	var=`grep version *.c`
+
+	#####Loop that reads texts line by line from $var
+	while read -r line            
+	do
+	    #####Gets the project name found in the comment section in all C files
+		project_name=`echo $line | awk -F[=' '] '{print $2}'`	        
+		
+		#####Remove the last character of the string in project_name
+		new_st=`echo ${project_name::-1}`   
+
+		#####Compares if "Project Name" input and "project name" in comments are equal
+		if [ "$new_st" == "$proj_name" ]; then               
+			#echo "Project Name input and project name in comments are equal"
+			
+			#####If equal, then call function to update the version number
+			update_version
+			
+		else
+			echo ""project name" input and "project name" in comments NOT are equal"
+		fi 
+	done <<<"$var"
+	echo "                                  "
+	echo "....THE VERSION OF YOUR C FILES ARE NOW UPDATED...."
+	update_makefile_version
+}
+
+
+#####Function that Increments the version number
+add_version_number() {
+
+	new_counter=`expr $version_num_only + 1`
+	new_version_num=`echo "version" $new_counter`
+	#echo "New Version Num:" $new_version_num
+}
+
+
+replace_old_comment() {
+	
+	input="$file_name"
+	#echo "INPUT IS: " $input
+	
+	#####Read each line of the $input file
+	while IFS= read -r lines
+	do
+		#echo "$lines"
+		
+		#####Checks and look for a line in $lines that has "//"
+	
+		if [[ "$lines" == *"//"* ]]; then               
+			#echo "LINES: " $lines
+			
+			#####Checks if the first string is '//'
+			first_string=`echo "$lines" | cut -d" " -f1`
+			
+			#echo "STRING is: " $first_string	
+			
+			if [[ "$first_string" == "//"* ]]; then               
+				#echo "YES FIRST STRING IS '//'"
+
+				to_be_removed_line=$lines
+				#echo "REMOVE THIS LINE: " $to_be_removed_line
+				sed -i "s|$to_be_removed_line|$new_c_comment|g" $input
+				
+				break
+				
+			fi 
+		fi  
+	done < "$input"
+	
+
+	#echo "TO BE ADDED: " $new_c_comment
+
+	
+	
+}
+
+update_version() {
+	
+
+	#echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx "
+
+	#####Gets the "file name" of the line
+	file_name=`echo $line | awk -F[=:] '{print $1}'`   
+
+	
+	#####Gets the current version number 
+	version_num=`echo $line | awk -F[=,] '{print $2}'`   
+
+	
+	#####Gets the version number only
+	version_num_only=`sed 's/.*version //' <<<$version_num`    
+
+	
+	#####Call function to increment version number
+	add_version_number
+	
+	#####Gets the current released date
+    release_date=`sed 's/.*released //' <<<$line`
+
+	
+	#####Creates the current value of line by combing the current values
+    prev_value_of_line="$file_name"://" st$version_num $release_date"
+	
+	#####Sets new release date from the current update date
+
+
+	#echo "New Release Date:" $new_release_date
+	
+	#####Creates the new value of line by combing the newly created values	
+	new_value_of_line="$file_name"://" $project_name $new_version_num"," "released" $new_release_date"
+	#echo "NEW VALUE OF LINE IS: " $new_value_of_line
+	
+	#####Variable that stores the newly created comment based from the $new_value_of_line
+    new_c_comment=""//" $project_name $new_version_num"," "released" $new_release_date"
+
+	#####Call the replace old comment function
+	replace_old_comment
+
+}
+
+
+
+check_file_in_folder
+
+
+
